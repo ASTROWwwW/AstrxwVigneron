@@ -139,24 +139,6 @@ AddEventHandler('esx:setJob', function(job)
 
     CreateBlipsForJob()
 end)
-
-
-
-function CreateBlipsForJob()
-    for k, v in pairs(Config.Zones) do
-        if Config.BlipsVisibleForAll or (PlayerData.job and PlayerData.job.name == 'vigneron') then
-            local blip = AddBlipForCoord(v.Pos.x, v.Pos.y, v.Pos.z)
-            SetBlipSprite(blip, v.Blip.Sprite)
-            SetBlipDisplay(blip, 4)
-            SetBlipScale(blip, v.Blip.Scale)
-            SetBlipColour(blip, v.Blip.Color)
-            SetBlipAsShortRange(blip, true)
-            BeginTextCommandSetBlipName("STRING")
-            AddTextComponentString(v.Blip.Name)
-            EndTextCommandSetBlipName(blip)
-        end
-    end
-end
 -- Mise à jour de l'état de service
 RegisterNetEvent('vigneron:updateDutyStatus')
 AddEventHandler('vigneron:updateDutyStatus', function(status)

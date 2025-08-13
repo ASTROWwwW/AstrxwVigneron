@@ -45,7 +45,6 @@ local function astrxwOpenVenteMenu()
             venteBlip = astrxwCreateBlip(ventePoint, "Point de Vente")
             SetNewWaypoint(ventePoint.x, ventePoint.y)
             astrxwShowNativeNotification("Allez au point de vente marqué sur la carte.", "CHAR_SOCIAL_CLUB", 1)
-            TriggerServerEvent('vigneron:startVente')
         else
             astrxwShowNativeNotification("~r~Vous devez être dans un " .. Config.VenteVehicle .. " pour commencer la vente.", "CHAR_SOCIAL_CLUB", 1)
         end
@@ -67,8 +66,7 @@ end
 
 
 local function astrxwCompleteVente()
-    astrxwShowNativeNotification("La vente vous a rapporté " .. Config.VentePricePerItem .. "$", "CHAR_SOCIAL_CLUB", 1)
-    TriggerServerEvent('vigneron:payPlayer')
+    TriggerServerEvent('vigneron:startVente')
 end
 
 

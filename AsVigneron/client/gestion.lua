@@ -16,6 +16,7 @@ local isGestionMenuOpen = false
 local employees = {}
 local selectedEmployee = nil
 local canInteract = true
+local PlayerData = {}
 
 -- Fonction pour afficher une notification native
 local function astrxwShowNativeNotification(msg)

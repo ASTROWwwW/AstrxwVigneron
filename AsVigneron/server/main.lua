@@ -33,17 +33,23 @@ end)
 
 RegisterServerEvent('vigneron:startVente')
 AddEventHandler('vigneron:startVente', function()
-    local _source = source
-    local xPlayer = ESX.GetPlayerFromId(_source)
-    if xPlayer then
-        local grapes = xPlayer.getInventoryItem('raisin').count
-        if grapes >= 1 then
-        Citizen.Wait(2000)
-        local grapes = math.random(1, 5)
-        xPlayer.removeInventoryItem('vine', 2)
-        astrxwSendDiscordEmbed("Vente démarrée par " .. xPlayer.getName())
+    local xPlayer = ESX.GetPlayerFromId(source)
+    if not xPlayer or xPlayer.job.name ~= 'vigneron' then
+        return
     end
-end
+
+    local vine = xPlayer.getInventoryItem('vine')
+    if vine.count <= 0 then
+        TriggerClientEvent('esx:showNotification', source, "~r~Vous n'avez pas de vin à vendre.")
+        return
+    end
+
+    xPlayer.removeInventoryItem('vine', 1)
+    Citizen.Wait(2000)
+    local amount = Config.VentePricePerItem
+    xPlayer.addMoney(amount)
+    TriggerClientEvent('esx:showNotification', source, 'Vous avez vendu ~g~1 bouteille~s~ pour ~g~$' .. amount)
+    astrxwSendDiscordEmbed("Vente par " .. xPlayer.getName() .. " pour $" .. amount)
 end)
 
 
@@ -80,8 +86,6 @@ end)
 
 
 
-ESX = exports["es_extended"]:getSharedObject()
-
 ESX.RegisterServerCallback('vigneron:getEmployees', function(source, cb)
     local employees = {}
     local xPlayers = ESX.GetExtendedPlayers()
@@ -103,6 +107,10 @@ end)
 RegisterNetEvent('vigneron:promoteEmployee')
 AddEventHandler('vigneron:promoteEmployee', function(identifier)
     local xPlayer = ESX.GetPlayerFromId(source)
+    if not xPlayer or xPlayer.job.name ~= 'vigneron' or xPlayer.job.grade_name ~= 'boss' then
+        TriggerClientEvent('esx:showNotification', source, "~r~Vous n'avez pas les permissions.")
+        return
+    end
 
     MySQL.Async.fetchScalar('SELECT job_grade FROM users WHERE identifier = @identifier', {
         ['@identifier'] = identifier
@@ -136,6 +144,10 @@ end)
 RegisterNetEvent('vigneron:demoteEmployee')
 AddEventHandler('vigneron:demoteEmployee', function(identifier)
     local xPlayer = ESX.GetPlayerFromId(source)
+    if not xPlayer or xPlayer.job.name ~= 'vigneron' or xPlayer.job.grade_name ~= 'boss' then
+        TriggerClientEvent('esx:showNotification', source, "~r~Vous n'avez pas les permissions.")
+        return
+    end
 
     MySQL.Async.fetchScalar('SELECT job_grade FROM users WHERE identifier = @identifier', {
         ['@identifier'] = identifier
@@ -164,13 +176,17 @@ end)
 RegisterNetEvent('vigneron:fireEmployee')
 AddEventHandler('vigneron:fireEmployee', function(identifier)
     local xPlayer = ESX.GetPlayerFromId(source)
+    if not xPlayer or xPlayer.job.name ~= 'vigneron' or xPlayer.job.grade_name ~= 'boss' then
+        TriggerClientEvent('esx:showNotification', source, "~r~Vous n'avez pas les permissions.")
+        return
+    end
 
     MySQL.Async.execute('UPDATE users SET job = @job, job_grade = 0 WHERE identifier = @identifier', {
         ['@identifier'] = identifier,
         ['@job'] = 'unemployed'
     }, function(rowsChanged)
         if rowsChanged > 0 then
-        
+
             local firedPlayer = ESX.GetPlayerFromIdentifier(identifier)
             if firedPlayer then
                 firedPlayer.setJob('unemployed', 0)
@@ -193,15 +209,4 @@ ESX.RegisterServerCallback('vigneron:checkJob', function(source, cb)
 end)
 
 
-
-RegisterServerEvent('vigneron:payPlayer')
-AddEventHandler('vigneron:payPlayer', function()
-    local xPlayer = ESX.GetPlayerFromId(source)
-    if xPlayer then
-        local amount = Config.VentePricePerItem
-        xPlayer.addMoney(amount)
-        TriggerClientEvent('esx:showNotification', source, "Vous avez reçu ~g~$" .. amount)
-        astrxwSendDiscordEmbed("Vente terminée par " .. xPlayer.getName() .. " pour $" .. amount)
-    end
-end)
 
