@@ -93,24 +93,22 @@ local function astrxwToggleVigneronMenu()
     end
 end
 
-Citizen.CreateThread(function()
-    while true do
-        Citizen.Wait(0)
-        if IsControlJustPressed(1, 167) then -- Touche F6
-            if PlayerData.job and PlayerData.job.name == 'vigneron' then
-                astrxwToggleVigneronMenu()
-            else
-                astrxwShowNativeNotification("~r~Vous n'avez pas le job Vigneron.", "CHAR_SOCIAL_CLUB", 1)
-            end
-        end
+-- Fix: replace the permanent Wait(0) key-poll thread with a RegisterKeyMapping command
+RegisterCommand('vigneron_toggle_menu', function()
+    if PlayerData.job and PlayerData.job.name == 'vigneron' then
+        astrxwToggleVigneronMenu()
+    else
+        astrxwShowNativeNotification("~r~Vous n'avez pas le job Vigneron.", "CHAR_SOCIAL_CLUB", 1)
     end
-end)
+end, false)
+RegisterKeyMapping('vigneron_toggle_menu', 'Ouvrir le menu Vigneron', 'keyboard', 'F6') -- F6
 
 
 Citizen.CreateThread(function()
     while true do
-        Citizen.Wait(0)
+        -- Fix: only render the menu at Wait(0) while open; sleep when closed
         if isMenuOpen then
+            Citizen.Wait(0)
             RageUI.IsVisible(RMenu.VigneronMenu, true, true, true, function()
                 RageUI.Checkbox("Prise de service", "Activer/Désactiver la prise de service", onDuty, {}, function(Hovered, Active, Selected, Checked)
                     if Selected then
@@ -153,18 +151,23 @@ Citizen.CreateThread(function()
                 end
             end, function()
             end)
+        else
+            -- Fix: sleep while the menu is closed instead of spinning at Wait(0)
+            Citizen.Wait(500)
         end
     end
 end)
 
 Citizen.CreateThread(function()
     while true do
-        Citizen.Wait(0)
+        -- Fix: adaptive wait; only drop to Wait(0) when a vente point is active and near
+        local sleep = 1000
         if ventePoint then
             local playerPed = PlayerPedId()
             local pos = GetEntityCoords(playerPed)
             local dist = Vdist(pos.x, pos.y, pos.z, ventePoint.x, ventePoint.y, ventePoint.z)
             if dist < 10.0 then
+                sleep = 0
                 DrawMarker(1, ventePoint.x, ventePoint.y, ventePoint.z - 1.0, 0, 0, 0, 0, 0, 0, 2.0, 2.0, 1.0, 0, 255, 0, 100, false, true, 2, false, nil, nil, false)
                 if dist < 1.5 then
                     astrxwShowNativeNotification("Appuyez sur ~INPUT_CONTEXT~ pour vendre vos produits.", "CHAR_SOCIAL_CLUB", 1)
@@ -178,5 +181,6 @@ Citizen.CreateThread(function()
                 end
             end
         end
+        Citizen.Wait(sleep)
     end
 end)

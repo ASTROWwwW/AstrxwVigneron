@@ -141,16 +141,18 @@ end)
 
 Citizen.CreateThread(function()
     while true do
-        Citizen.Wait(0)
-        local playerPed = PlayerPedId()
-        local coords = GetEntityCoords(playerPed)
-        local dist = Vdist(coords.x, coords.y, coords.z, Config.BossMarker.Pos.x, Config.BossMarker.Pos.y, Config.BossMarker.Pos.z)
+        -- Fix: adaptive wait; skip the per-frame work unless boss and near the marker
+        local sleep = 1000
 
-       
         if PlayerData.job and PlayerData.job.name == 'vigneron' and PlayerData.job.grade_name == 'boss' then
+            local playerPed = PlayerPedId()
+            local coords = GetEntityCoords(playerPed)
+            local dist = Vdist(coords.x, coords.y, coords.z, Config.BossMarker.Pos.x, Config.BossMarker.Pos.y, Config.BossMarker.Pos.z)
+
             if dist < 10.0 then
+                sleep = 0 -- Fix: near the boss marker, render every frame
                 DrawMarker(Config.BossMarker.Type, Config.BossMarker.Pos.x, Config.BossMarker.Pos.y, Config.BossMarker.Pos.z - 1.0, 0, 0, 0, 0, 0, 0, Config.BossMarker.Size.x, Config.BossMarker.Size.y, Config.BossMarker.Size.z, Config.BossMarker.Color.r, Config.BossMarker.Color.g, Config.BossMarker.Color.b, 100, false, true, 2, nil, nil, false)
-                
+
                 if dist < Config.BossMarker.Size.x then
                     astrxwShowNativeNotification("Appuyez sur ~INPUT_CONTEXT~ pour accéder à la gestion.")
                     if IsControlJustPressed(1, 38) then -- Touche E
@@ -167,14 +169,17 @@ Citizen.CreateThread(function()
                 end
             end
         end
+
+        Citizen.Wait(sleep) -- Fix: adaptive sleep instead of permanent Wait(0)
     end
 end)
 
 
 Citizen.CreateThread(function()
     while true do
-        Citizen.Wait(0)
+        -- Fix: only render the gestion menu at Wait(0) while open; sleep when closed
         if isGestionMenuOpen then
+            Citizen.Wait(0)
             RageUI.IsVisible(RMenu.GestionMenu, true, true, true, function()
                 astrxwShowEmployees()
             end, function()
@@ -184,6 +189,9 @@ Citizen.CreateThread(function()
                 astrxwShowEmployeeOptions()
             end, function()
             end)
+        else
+            -- Fix: sleep while the gestion menu is closed
+            Citizen.Wait(500)
         end
     end
 end)
