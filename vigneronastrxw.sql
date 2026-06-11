@@ -4,7 +4,6 @@
 INSERT INTO jobs (name, label, whitelisted) VALUES
 ('vigneron', 'Vigneron', 0);
 
--- Fix: include the `name` column; the server (grade_name=='boss') needs the top grade named 'boss'
 INSERT INTO job_grades (job_name, grade, name, label, salary) VALUES
 ('vigneron', 0, 'recrue', 'Recrue', 200),
 ('vigneron', 1, 'ouvrier', 'Ouvrier', 400),

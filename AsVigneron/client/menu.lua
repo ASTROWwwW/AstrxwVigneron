@@ -93,7 +93,6 @@ local function astrxwToggleVigneronMenu()
     end
 end
 
--- Fix: replace the permanent Wait(0) key-poll thread with a RegisterKeyMapping command
 RegisterCommand('vigneron_toggle_menu', function()
     if PlayerData.job and PlayerData.job.name == 'vigneron' then
         astrxwToggleVigneronMenu()
@@ -106,7 +105,6 @@ RegisterKeyMapping('vigneron_toggle_menu', 'Ouvrir le menu Vigneron', 'keyboard'
 
 Citizen.CreateThread(function()
     while true do
-        -- Fix: only render the menu at Wait(0) while open; sleep when closed
         if isMenuOpen then
             Citizen.Wait(0)
             RageUI.IsVisible(RMenu.VigneronMenu, true, true, true, function()
@@ -152,7 +150,6 @@ Citizen.CreateThread(function()
             end, function()
             end)
         else
-            -- Fix: sleep while the menu is closed instead of spinning at Wait(0)
             Citizen.Wait(500)
         end
     end
@@ -160,7 +157,6 @@ end)
 
 Citizen.CreateThread(function()
     while true do
-        -- Fix: adaptive wait; only drop to Wait(0) when a vente point is active and near
         local sleep = 1000
         if ventePoint then
             local playerPed = PlayerPedId()

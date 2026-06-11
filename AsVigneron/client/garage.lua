@@ -57,14 +57,13 @@ end)
 
 Citizen.CreateThread(function()
     while true do
-        -- Fix: adaptive wait; compute nearest distance first and only run at Wait(0) when close
         local sleep = 1000
         local playerPed = PlayerPedId()
         local coords = GetEntityCoords(playerPed)
         local dist = Vdist(coords.x, coords.y, coords.z, Config.GarageMarker.Pos.x, Config.GarageMarker.Pos.y, Config.GarageMarker.Pos.z)
 
         if dist < 100.0 then
-            sleep = 0 -- Fix: near the garage marker, render every frame
+            sleep = 0
             DrawMarker(Config.GarageMarker.Type, Config.GarageMarker.Pos.x, Config.GarageMarker.Pos.y, Config.GarageMarker.Pos.z - 1.0, 0, 0, 0, 0, 0, 0, Config.GarageMarker.Size.x, Config.GarageMarker.Size.y, Config.GarageMarker.Size.z, Config.GarageMarker.Color.r, Config.GarageMarker.Color.g, Config.GarageMarker.Color.b, 100, false, true, 2, nil, nil, false)
 
             if dist < Config.GarageMarker.Size.x then
@@ -82,7 +81,7 @@ Citizen.CreateThread(function()
 
         local deleteDist = Vdist(coords.x, coords.y, coords.z, Config.DeletePoint.Pos.x, Config.DeletePoint.Pos.y, Config.DeletePoint.Pos.z)
         if deleteDist < Config.DeletePoint.Size.x then
-            sleep = 0 -- Fix: near the delete point, render every frame
+            sleep = 0
             DrawMarker(Config.DeletePoint.Type, Config.DeletePoint.Pos.x, Config.DeletePoint.Pos.y, Config.DeletePoint.Pos.z - 1.0, 0, 0, 0, 0, 0, 0, Config.DeletePoint.Size.x, Config.DeletePoint.Size.y, Config.DeletePoint.Size.z, Config.DeletePoint.Color.r, Config.DeletePoint.Color.g, Config.DeletePoint.Color.b, 100, false, true, 2, nil, nil, false)
             
             if deleteDist < Config.DeletePoint.Size.x then
@@ -93,14 +92,13 @@ Citizen.CreateThread(function()
             end
         end
 
-        Citizen.Wait(sleep) -- Fix: adaptive sleep instead of permanent Wait(0)
+        Citizen.Wait(sleep)
     end
 end)
 
 
 Citizen.CreateThread(function()
     while true do
-        -- Fix: only render the garage menu at Wait(0) while open; sleep when closed
         if isMenuOpen then
             Citizen.Wait(0)
             RageUI.IsVisible(RMenu.GarageMenu, true, true, true, function()
@@ -115,7 +113,6 @@ Citizen.CreateThread(function()
             end, function()
             end)
         else
-            -- Fix: sleep while the garage menu is closed
             Citizen.Wait(500)
         end
     end

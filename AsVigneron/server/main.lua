@@ -1,11 +1,8 @@
 ESX = exports["es_extended"]:getSharedObject()
 
--- Fix: server-side duty state keyed by identifier (clients can no longer fake it)
 local DutyState = {}
--- Fix: server-side cooldowns keyed by identifier per-action (replaces blocking Citizen.Wait)
 local Cooldowns = {}
 
--- Fix: skip the HTTP call when the webhook is a placeholder/empty so we don't spam an invalid URL
 local function astrxwSendDiscordEmbed(description)
     local url = Config.DiscordWebhookURL
     if not url or url == '' or url == 'TON WEBHOOK' then
@@ -27,7 +24,6 @@ local function astrxwSendDiscordEmbed(description)
     PerformHttpRequest(url, function(err, text, headers) end, 'POST', json.encode({embeds = embed}), { ['Content-Type'] = 'application/json' })
 end
 
--- Fix: non-blocking server cooldown helper (replaces Citizen.Wait(2000) in net handlers)
 local function astrxwOnCooldown(identifier, action, delay)
     local now = GetGameTimer()
     Cooldowns[identifier] = Cooldowns[identifier] or {}
@@ -39,7 +35,6 @@ local function astrxwOnCooldown(identifier, action, delay)
     return false
 end
 
--- Fix: validate proximity server-side against a list of points (anti-teleport / anti-spoof)
 local function astrxwIsNearPoint(xPlayer, points, radius)
     local ped = GetPlayerPed(xPlayer.source)
     if not ped or ped == 0 then return false end
@@ -58,7 +53,6 @@ local function astrxwIsNearPoint(xPlayer, points, radius)
     return false
 end
 
--- Fix: build a list of harvest/processing zone points from Config.Zones
 local function astrxwGetZonePoints()
     local points = {}
     for _, v in pairs(Config.Zones) do
@@ -71,17 +65,14 @@ RegisterServerEvent('vigneron:notifyService')
 AddEventHandler('vigneron:notifyService', function(onDuty)
     local _source = source
     local xPlayer = ESX.GetPlayerFromId(_source)
-    -- Fix: verify the vigneron job before toggling duty / hitting the webhook (anti-flood)
     if not xPlayer or xPlayer.job.name ~= 'vigneron' then
         return
     end
-    -- Fix: throttle duty toggling to avoid webhook spam
     if astrxwOnCooldown(xPlayer.identifier, 'notifyService', 3000) then
         return
     end
 
     onDuty = onDuty and true or false
-    -- Fix: store duty state server-side
     DutyState[xPlayer.identifier] = onDuty
 
     TriggerClientEvent('vigneron:updateDutyStatus', _source, onDuty)
@@ -101,19 +92,16 @@ AddEventHandler('vigneron:startVente', function()
         return
     end
 
-    -- Fix: enforce Config.VenteCooldown server-side (non-blocking) instead of unused config
     if astrxwOnCooldown(xPlayer.identifier, 'vente', Config.VenteCooldown or 60000) then
         TriggerClientEvent('esx:showNotification', source, '~r~Vous devez attendre avant de vendre à nouveau.')
         return
     end
 
-    -- Fix: validate proximity to a VentePoint server-side (anti-spoof)
     if not astrxwIsNearPoint(xPlayer, Config.VentePoints, 5.0) then
         TriggerClientEvent('esx:showNotification', source, "~r~Vous n'êtes pas à un point de vente.")
         return
     end
 
-    -- Fix: nil-check the inventory item before reading .count
     local vine = xPlayer.getInventoryItem('vine')
     if not vine or vine.count <= 0 then
         TriggerClientEvent('esx:showNotification', source, "~r~Vous n'avez pas de vin à vendre.")
@@ -121,7 +109,6 @@ AddEventHandler('vigneron:startVente', function()
     end
 
     xPlayer.removeInventoryItem('vine', 1)
-    -- Fix: removed blocking Citizen.Wait(2000); cooldown above rate-limits sales
     local amount = Config.VentePricePerItem
     xPlayer.addMoney(amount)
     TriggerClientEvent('esx:showNotification', source, 'Vous avez vendu ~g~1 bouteille~s~ pour ~g~$' .. amount)
@@ -135,7 +122,6 @@ AddEventHandler('vigneron:startHarvest', function()
     local xPlayer = ESX.GetPlayerFromId(_source)
     if not xPlayer then return end
 
-    -- Fix: require the vigneron job, on-duty (server state) and zone proximity (no more free items)
     if xPlayer.job.name ~= 'vigneron' then
         return
     end
@@ -146,7 +132,6 @@ AddEventHandler('vigneron:startHarvest', function()
     if not astrxwIsNearPoint(xPlayer, astrxwGetZonePoints(), 20.0) then
         return
     end
-    -- Fix: non-blocking server cooldown (replaces Citizen.Wait(2000))
     if astrxwOnCooldown(xPlayer.identifier, 'harvest', 2000) then
         return
     end
@@ -162,7 +147,6 @@ AddEventHandler('vigneron:startProcessing', function()
     local xPlayer = ESX.GetPlayerFromId(_source)
     if not xPlayer then return end
 
-    -- Fix: require the vigneron job, on-duty (server state) and zone proximity
     if xPlayer.job.name ~= 'vigneron' then
         return
     end
@@ -173,12 +157,10 @@ AddEventHandler('vigneron:startProcessing', function()
     if not astrxwIsNearPoint(xPlayer, astrxwGetZonePoints(), 20.0) then
         return
     end
-    -- Fix: non-blocking server cooldown (replaces Citizen.Wait(2000))
     if astrxwOnCooldown(xPlayer.identifier, 'processing', 2000) then
         return
     end
 
-    -- Fix: nil-check the inventory item before reading .count
     local raisin = xPlayer.getInventoryItem('raisin')
     if raisin and raisin.count >= 1 then
         xPlayer.removeInventoryItem('raisin', 1)
@@ -189,7 +171,6 @@ AddEventHandler('vigneron:startProcessing', function()
     end
 end)
 
--- Fix: clean up server-side duty/cooldown state on disconnect to avoid stale leaks
 AddEventHandler('esx:playerDropped', function(playerId)
     local xPlayer = ESX.GetPlayerFromId(playerId)
     if xPlayer then
@@ -228,12 +209,10 @@ AddEventHandler('vigneron:promoteEmployee', function(identifier)
         return
     end
 
-    -- Fix: filter on job='vigneron' so only vigneron employees can be targeted
     MySQL.Async.fetchScalar('SELECT job_grade FROM users WHERE identifier = @identifier AND job = @job', {
         ['@identifier'] = identifier,
         ['@job'] = 'vigneron'
     }, function(currentGrade)
-        -- Fix: nil-check (target not found / not a vigneron) before comparing grades
         if currentGrade == nil then
             TriggerClientEvent('esx:showNotification', xPlayer.source, '~r~Employé introuvable.')
             return
@@ -272,12 +251,10 @@ AddEventHandler('vigneron:demoteEmployee', function(identifier)
         return
     end
 
-    -- Fix: filter on job='vigneron' so only vigneron employees can be targeted
     MySQL.Async.fetchScalar('SELECT job_grade FROM users WHERE identifier = @identifier AND job = @job', {
         ['@identifier'] = identifier,
         ['@job'] = 'vigneron'
     }, function(currentGrade)
-        -- Fix: nil-check (target not found / not a vigneron) before comparing grades
         if currentGrade == nil then
             TriggerClientEvent('esx:showNotification', xPlayer.source, '~r~Employé introuvable.')
             return
@@ -311,7 +288,6 @@ AddEventHandler('vigneron:fireEmployee', function(identifier)
         return
     end
 
-    -- Fix: only fire users who are actually vigneron (AND job='vigneron'), never arbitrary players
     MySQL.Async.execute('UPDATE users SET job = @newjob, job_grade = 0 WHERE identifier = @identifier AND job = @oldjob', {
         ['@identifier'] = identifier,
         ['@newjob'] = 'unemployed',
@@ -331,16 +307,13 @@ AddEventHandler('vigneron:fireEmployee', function(identifier)
 end)
 
 
--- Fix: implement the previously-dead 'vigneron:announceStatus' handler (client menu.lua buttons)
 RegisterServerEvent('vigneron:announceStatus')
 AddEventHandler('vigneron:announceStatus', function(isOpen)
     local _source = source
     local xPlayer = ESX.GetPlayerFromId(_source)
-    -- Fix: verify the vigneron job server-side before broadcasting
     if not xPlayer or xPlayer.job.name ~= 'vigneron' then
         return
     end
-    -- Fix: throttle announcements to prevent broadcast/webhook spam
     if astrxwOnCooldown(xPlayer.identifier, 'announce', 5000) then
         return
     end

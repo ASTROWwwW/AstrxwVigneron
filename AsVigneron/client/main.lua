@@ -19,7 +19,6 @@ local function ShowHelpNotification(msg)
     DisplayHelpTextFromStringLabel(0, 0, 1, -1)
 end
 
--- Fix: factored the duplicated harvest/treatment animation into one helper
 local function PlayWorkAnimation(name, duration, label, serverEvent)
     local playerPed = PlayerPedId()
     RequestAnimDict("amb@prop_human_bum_bin@base")
@@ -130,25 +129,21 @@ Citizen.CreateThread(function()
     PlayerData = ESX.GetPlayerData()
     CreateBlipsForJob()
 
-    -- Fix: track help-notif transitions so we don't spam DisplayHelpText every frame
     local helpShown = false
 
     while true do
-        -- Fix: default to a long sleep; only drop to Wait(0) when actually near a zone
         local sleep = 1000
 
-        -- Fix: skip all per-frame work entirely when not a vigneron
         if PlayerData.job and PlayerData.job.name == 'vigneron' then
-            local playerPed = PlayerPedId() -- Fix: PlayerPedId() instead of GetPlayerPed(-1)
+            local playerPed = PlayerPedId()
             local pos = GetEntityCoords(playerPed)
 
-            -- Fix: reset currentZone each iteration so it clears when leaving zones
             currentZone = nil
 
             for k, v in pairs(Config.Zones) do
                 local dist = Vdist(pos.x, pos.y, pos.z, v.Pos.x, v.Pos.y, v.Pos.z)
                 if dist < v.Size.x then
-                    sleep = 0 -- Fix: only render markers at Wait(0) when in range
+                    sleep = 0
                     currentZone = k
                     DrawMarker(v.Marker.Type, v.Pos.x, v.Pos.y, v.Pos.z, 0, 0, 0, 0, 0, 0, v.Marker.Scale.x, v.Marker.Scale.y, v.Marker.Scale.z, v.Marker.Color.r, v.Marker.Color.g, v.Marker.Color.b, v.Marker.Color.a, true, true, 2, nil, nil, false)
                     if dist < 1.5 then
@@ -165,12 +160,11 @@ Citizen.CreateThread(function()
                                 end
                             end
                         elseif not helpShown then
-                            -- Fix: show the duty warning once per entry, not every frame
                             ShowNativeNotification('~r~Vous devez être en service pour récolter ou traiter.')
                         end
                         helpShown = true
                     end
-                    break -- Fix: stop after the matched zone
+                    break
                 end
             end
 
